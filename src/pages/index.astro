@@ -22,10 +22,13 @@ const firebaseConfig = {
         Iniciar sesión
       </h1>
       <form class="space-y-5">
+        <!-- Mensaje de error -->
+        <div id="error-message" class="text-red-500 hidden text-sm"></div>
+
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Correo electrónico
-          </label>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Correo electrónico</label
+          >
           <input
             type="email"
             placeholder="tucorreo@email.com"
@@ -33,9 +36,9 @@ const firebaseConfig = {
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Contraseña
-          </label>
+          <label class="block text-sm font-medium text-gray-700 mb-1"
+            >Contraseña</label
+          >
           <input
             type="password"
             placeholder="••••••••"
@@ -52,18 +55,16 @@ const firebaseConfig = {
     </div>
   </section>
 
-  <!-- Inyectamos la config de Firebase en el DOM de forma segura -->
+  <!-- Inyectamos config Firebase como JSON en una variable global -->
   <script
     type="application/json"
     id="firebase-config"
     set:html={JSON.stringify(firebaseConfig)}
   />
-
-  <!-- Script de autenticación con Firebase -->
+  <!-- Script que la lee y la usa en cliente -->
   <script type="module">
     const configScript = document.getElementById("firebase-config");
     const firebaseConfig = JSON.parse(configScript.textContent);
-    console.log("📦 Config Firebase leída desde el DOM:", firebaseConfig);
 
     import("https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js").then(
       ({ initializeApp }) => {
@@ -73,31 +74,42 @@ const firebaseConfig = {
           const app = initializeApp(firebaseConfig);
           const auth = getAuth(app);
 
-          console.log("🔥 Firebase inicializado correctamente");
-
           document
             .querySelector("form")
             ?.addEventListener("submit", async (e) => {
               e.preventDefault();
-
               const email = document.querySelector('input[type="email"]').value;
               const password = document.querySelector(
                 'input[type="password"]'
               ).value;
 
-              console.log("📨 Intentando login con:", { email });
+              // Limpiar mensaje de error previo
+              const errorMessage = document.getElementById("error-message");
+              errorMessage.classList.add("hidden");
+              errorMessage.textContent = "";
 
               try {
-                const userCredential = await signInWithEmailAndPassword(
-                  auth,
-                  email,
-                  password
-                );
-                console.log("✅ Usuario autenticado:", userCredential.user);
+                await signInWithEmailAndPassword(auth, email, password);
                 window.location.href = "/dashboard";
               } catch (error) {
-                console.error("❌ Error al iniciar sesión:", error);
-                alert("Error al iniciar sesión: " + error.message);
+                console.error(
+                  "Error de autenticación:",
+                  error.code,
+                  error.message
+                );
+
+                // Mostrar el mensaje de error correspondiente
+                if (error.code === "auth/user-not-found") {
+                  errorMessage.textContent = "La cuenta no está registrada.";
+                } else if (error.code === "auth/invalid-login-credentials") {
+                  errorMessage.textContent = "La contraseña es incorrecta.";
+                } else {
+                  errorMessage.textContent =
+                    "Error al iniciar sesión. Inténtalo de nuevo.";
+                }
+
+                // Mostrar el mensaje de error en rojo
+                errorMessage.classList.remove("hidden");
               }
             });
         });
