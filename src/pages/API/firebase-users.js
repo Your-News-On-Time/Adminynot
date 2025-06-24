@@ -1,27 +1,23 @@
 // src/pages/API/firebase-users.js
-import admin from "firebase-admin";
-import { getApps } from "firebase-admin/app";
+import { getUsers } from '../../ddbb/firebaseAdmin.js';
 
-if (!getApps().length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: `firebase-admin@${process.env.FIREBASE_PROJECT_ID}.iam.gserviceaccount.com`,
-      privateKey: "-----BEGIN PRIVATE KEY-----\nDUMMY_KEY\n-----END PRIVATE KEY-----\n"
-    }),
-    projectId: process.env.FIREBASE_PROJECT_ID
-  });
-}
-
+// Usar la función centralizada que maneja tanto el modo demo como el modo live
 async function getAllUsers() {
-  const listUsersResult = await admin.auth().listUsers();
-  // Puedes filtrar, mapear, etc. aquí si quieres.
-  return listUsersResult.users.map(u => ({
-    uid: u.uid,
-    email: u.email,
-    displayName: u.displayName,
-    creationTime: u.metadata?.creationTime
-  }));
+  try {
+    const userData = await getUsers();
+    return userData.users.map(user => ({
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      creationTime: user.creationTime,
+      emailVerified: user.emailVerified,
+      disabled: user.disabled,
+      lastSignInTime: user.lastSignInTime
+    }));
+  } catch (error) {
+    console.error('Error in getAllUsers:', error);
+    throw error;
+  }
 }
 
 export const GET = async ({ request }) => {

@@ -1,23 +1,9 @@
 // src/ddbb/apiLogger.js
+import { db } from './firebaseAdmin.js';
 import admin from 'firebase-admin';
 
-// Inicializar Firebase Admin si no está ya inicializado
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: `firebase-admin@${process.env.FIREBASE_PROJECT_ID}.iam.gserviceaccount.com`,
-        privateKey: "-----BEGIN PRIVATE KEY-----\nDUMMY_KEY\n-----END PRIVATE KEY-----\n"
-      }),
-      projectId: process.env.FIREBASE_PROJECT_ID
-    });
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
-
-const db = admin.firestore();
+// Usar la instancia centralizada de Firebase desde firebaseAdmin.js
+// Esto evita conflictos de inicialización múltiple
 
 // Función para registrar una petición a NewsData.io
 export async function logNewsDataRequest(requestData) {

@@ -7,7 +7,8 @@ import { firebaseAdminConfig, firebaseClientConfig } from '../utils/firebase-con
 // Cargar variables de entorno
 config();
 
-let adminApp;
+// Variables globales para la instancia única
+let adminApp = null;
 let authService = null;
 let dbService = null;
 
@@ -19,64 +20,84 @@ const configStatus = {
   mode: 'none'
 };
 
-try {
-  // Verificar si ya existe una app
-  if (getApps().length === 0) {
-    // Opción 1: Service Account Key (preferida para producción)
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      try {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-        adminApp = initializeApp({
-          credential: cert(serviceAccount),
-          projectId: firebaseAdminConfig.projectId
-        });
-        configStatus.isConfigured = true;
-        configStatus.mode = 'service-account';
-        console.log('✅ Firebase Admin inicializado con Service Account Key');
-      } catch (parseError) {
-        console.error('❌ Error parsing service account key:', parseError.message);
-        throw parseError;
-      }
-    } 
-    // Opción 2: Configuración mínima con project ID
-    else if (firebaseAdminConfig.projectId) {
-      console.log('⚠️ No service account key found, usando configuración mínima');
-      console.log('🔧 Project ID:', firebaseAdminConfig.projectId);
-      
-      // Intentar usar Application Default Credentials
-      try {
-        adminApp = initializeApp({
-          projectId: firebaseAdminConfig.projectId
-        });
-        configStatus.isConfigured = true;
-        configStatus.mode = 'default-credentials';
-        console.log('✅ Firebase Admin inicializado con Default Credentials');
-      } catch (defaultError) {
-        console.log('⚠️ Default credentials no disponibles, modo limitado');
-        configStatus.mode = 'limited';
-      }
-    }
-  } else {
-    adminApp = getApps()[0];
-    configStatus.isConfigured = true;
-    configStatus.mode = 'existing-app';
+// Función para inicializar Firebase (solo se ejecuta una vez)
+function initializeFirebaseAdmin() {
+  if (adminApp) {
+    return adminApp; // Ya inicializado
   }
 
-  // Inicializar servicios si la app está configurada
-  if (adminApp && configStatus.isConfigured) {
-    try {
-      authService = getAuth(adminApp);
-      dbService = getFirestore(adminApp);
-      console.log('✅ Servicios Firebase Auth y Firestore inicializados');
-    } catch (serviceError) {
-      console.error('⚠️ Error inicializando servicios:', serviceError.message);
+  try {
+    // Verificar si ya existe una app
+    const existingApps = getApps();
+    if (existingApps.length > 0) {
+      adminApp = existingApps[0];
+      configStatus.isConfigured = true;
+      configStatus.mode = 'existing-app';
+      console.log('✅ Usando Firebase Admin app existente');
+    } else {
+      // Opción 1: Service Account Key (preferida para producción)
+      if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+        try {
+          const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+          
+          // Validar que el service account tenga el project_id
+          if (!serviceAccount.project_id) {
+            throw new Error('Service account JSON is missing project_id');
+          }
+          
+          adminApp = initializeApp({
+            credential: cert(serviceAccount),
+            projectId: serviceAccount.project_id // Usar el project_id del service account
+          });
+          configStatus.isConfigured = true;
+          configStatus.mode = 'service-account';
+          console.log('✅ Firebase Admin inicializado con Service Account Key');
+        } catch (parseError) {
+          console.error('❌ Error parsing service account key:', parseError.message);
+          throw parseError;
+        }
+      } 
+      // Opción 2: Configuración mínima con project ID
+      else if (firebaseAdminConfig.projectId) {
+        console.log('⚠️ No service account key found, usando configuración mínima');
+        console.log('🔧 Project ID:', firebaseAdminConfig.projectId);
+        
+        // Intentar usar Application Default Credentials
+        try {
+          adminApp = initializeApp({
+            projectId: firebaseAdminConfig.projectId
+          });
+          configStatus.isConfigured = true;
+          configStatus.mode = 'default-credentials';
+          console.log('✅ Firebase Admin inicializado con Default Credentials');
+        } catch (defaultError) {
+          console.log('⚠️ Default credentials no disponibles, modo limitado');
+          configStatus.mode = 'limited';
+        }
+      }
     }
+
+    // Inicializar servicios si la app está configurada
+    if (adminApp && configStatus.isConfigured) {
+      try {
+        authService = getAuth(adminApp);
+        dbService = getFirestore(adminApp);
+        console.log('✅ Servicios Firebase Auth y Firestore inicializados');
+      } catch (serviceError) {
+        console.error('⚠️ Error inicializando servicios:', serviceError.message);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error crítico inicializando Firebase Admin:', error.message);
+    configStatus.mode = 'error';
   }
 
-} catch (error) {
-  console.error('❌ Error crítico inicializando Firebase Admin:', error.message);
-  configStatus.mode = 'error';
+  return adminApp;
 }
+
+// Inicializar Firebase la primera vez que se importa este módulo
+initializeFirebaseAdmin();
 
 // Función para obtener usuarios (con fallback a datos demo)
 export async function getUsers(maxResults = 1000) {
