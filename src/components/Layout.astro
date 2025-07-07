@@ -1,5 +1,6 @@
 ---
 const { title = "Adminynot" } = Astro.props;
+import '../styles/global.css';
 ---
 
 <!doctype html>
@@ -7,9 +8,17 @@ const { title = "Adminynot" } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Panel de administración para YourNewsOnTime" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
   </head>
-  <body class="font-sans bg-gray-100 text-gray-900">
+  <body class="font-sans bg-gray-100 text-gray-900 min-h-screen">
     <slot />
+    <script>
+      // Recargar datos cada 30 segundos
+      setInterval(() => {
+        window.dispatchEvent(new CustomEvent('refresh-data'));
+      }, 30000);
+    </script>
   </body>
 </html>
