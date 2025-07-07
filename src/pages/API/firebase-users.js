@@ -1,7 +1,7 @@
-// src/pages/API/firebase-users.js
+
 import { getUsers } from '../../ddbb/firebaseAdmin.js';
 
-// Usar la función centralizada que maneja tanto el modo demo como el modo live
+
 async function getAllUsers() {
   try {
     const userData = await getUsers();
