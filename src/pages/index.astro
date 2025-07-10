@@ -13,7 +13,9 @@ const firebaseConfig = {
 };
 
 // Verificar que todas las variables estén presentes
-const isConfigValid = Object.values(firebaseConfig).every(value => value && value !== 'undefined');
+const isConfigValid = Object.values(firebaseConfig).every(
+  (value) => value && value !== "undefined"
+);
 ---
 
 <Layout title="Login | Adminynot">
@@ -42,7 +44,10 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
 
         <!-- Email -->
         <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            for="email"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
             Correo electrónico
           </label>
           <input
@@ -56,7 +61,10 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
 
         <!-- Password -->
         <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            for="password"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
             Contraseña
           </label>
           <input
@@ -76,44 +84,30 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
         >
           Iniciar sesión
         </button>
-
-        <!-- Info -->
-        <div class="text-xs text-gray-500 text-center mt-4">
-          <p>🛡️ Sistema con autenticación dual: Firebase + Emergencia</p>
-          <p class="mt-1">Firebase Project: {firebaseConfig.projectId || 'No configurado'}</p>
-        </div>
       </form>
-
-      <!-- Link al dashboard (temporal para testing) -->
-      <div class="mt-6 text-center">
-        <a 
-          href="/dashboard" 
-          class="text-gray-500 hover:text-gray-700 text-sm underline"
-        >
-          Ir directamente al Dashboard (testing)
-        </a>
-      </div>
     </div>
   </section>
 
   <!-- Inyectamos config Firebase como JSON en una variable global -->
-  {isConfigValid && (
-    <script 
-      type="application/json" 
-      id="firebase-config"
-      set:html={JSON.stringify(firebaseConfig)}
-    />
-  )}
+  {
+    isConfigValid && (
+      <script
+        type="application/json"
+        id="firebase-config"
+        set:html={JSON.stringify(firebaseConfig)}
+      />
+    )
+  }
 
   <script>
     // ===================================
     // SISTEMA DE AUTENTICACIÓN DUAL
     // ===================================
-    
+
     // Credenciales de emergencia (siempre funcionan)
     const EMERGENCY_CREDENTIALS = {
       email: "admin@admin.com",
-      password: "admin1234"
+      password: "admin1234",
     };
 
     // Elementos del DOM
@@ -150,18 +144,24 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
 
     // Función para autenticación de emergencia
     function emergencyAuth(email, password) {
-      return email === EMERGENCY_CREDENTIALS.email && password === EMERGENCY_CREDENTIALS.password;
+      return (
+        email === EMERGENCY_CREDENTIALS.email &&
+        password === EMERGENCY_CREDENTIALS.password
+      );
     }
 
     // Función para guardar estado de login
     function saveLoginState(method, userEmail = null) {
-      localStorage.setItem('adminLogin', JSON.stringify({
-        loggedIn: true,
-        timestamp: Date.now(),
-        method: method,
-        user: userEmail,
-        expires: Date.now() + (24 * 60 * 60 * 1000) // 24 horas
-      }));
+      localStorage.setItem(
+        "adminLogin",
+        JSON.stringify({
+          loggedIn: true,
+          timestamp: Date.now(),
+          method: method,
+          user: userEmail,
+          expires: Date.now() + 24 * 60 * 60 * 1000, // 24 horas
+        })
+      );
     }
 
     // Función para redirigir al dashboard
@@ -182,7 +182,7 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
       // 1. PRIMERA OPCIÓN: Credenciales de emergencia
       if (emergencyAuth(email, password)) {
         console.log("🚀 Emergency authentication successful");
-        saveLoginState('emergency');
+        saveLoginState("emergency");
         redirectToDashboard();
         return;
       }
@@ -191,26 +191,39 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
       if (configScript) {
         try {
           console.log("🔥 Intentando autenticación con Firebase...");
-          
+
           const firebaseConfig = JSON.parse(configScript.textContent);
-          
+
           // Importar Firebase dinámicamente
-          const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js");
-          const { getAuth, signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js");
-          
+          const { initializeApp } = await import(
+            "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"
+          );
+          const { getAuth, signInWithEmailAndPassword } = await import(
+            "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"
+          );
+
           const app = initializeApp(firebaseConfig);
           const auth = getAuth(app);
-          
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          
-          console.log("✅ Firebase authentication successful:", userCredential.user.email);
-          saveLoginState('firebase', userCredential.user.email);
+
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
+
+          console.log(
+            "✅ Firebase authentication successful:",
+            userCredential.user.email
+          );
+          saveLoginState("firebase", userCredential.user.email);
           redirectToDashboard();
           return;
-          
         } catch (firebaseError) {
-          console.warn("⚠️ Firebase authentication failed:", firebaseError.code);
-          
+          console.warn(
+            "⚠️ Firebase authentication failed:",
+            firebaseError.code
+          );
+
           // Mensajes específicos para errores de Firebase
           let errorMsg = "Error de autenticación";
           if (firebaseError.code === "auth/user-not-found") {
@@ -226,7 +239,7 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
           } else {
             errorMsg = `Error de autenticación. Inténtalo de nuevo.`;
           }
-          
+
           showError(errorMsg);
           setLoginState(false);
           return;
@@ -242,7 +255,7 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
     // Event listener para el formulario
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      
+
       const email = emailInput.value.trim();
       const password = passwordInput.value;
 
@@ -255,6 +268,9 @@ const isConfigValid = Object.values(firebaseConfig).every(value => value && valu
     });
 
     console.log("🔐 Login system ready");
-    console.log("🔥 Firebase config:", configScript ? "Available" : "Not available");
+    console.log(
+      "🔥 Firebase config:",
+      configScript ? "Available" : "Not available"
+    );
   </script>
 </Layout>
