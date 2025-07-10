@@ -1,0 +1,260 @@
+---
+import Layout from "../components/Layout.astro";
+import "../styles/global.css";
+
+// Cargamos la configuración desde las variables de entorno (.env)
+const firebaseConfig = {
+  apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
+  authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
+};
+
+// Verificar que todas las variables estén presentes
+const isConfigValid = Object.values(firebaseConfig).every(value => value && value !== 'undefined');
+---
+
+<Layout title="Login | Adminynot">
+  <section
+    class="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center px-4"
+  >
+    <div class="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
+      <h1 class="text-2xl font-bold mb-6 text-gray-800 text-center">
+        Panel de Administración
+      </h1>
+
+      <form class="space-y-5" id="loginForm">
+        <!-- Mensaje de error -->
+        <div
+          id="error-message"
+          class="text-red-500 hidden text-sm text-center p-3 bg-red-50 border border-red-200 rounded-lg"
+        >
+        </div>
+
+        <!-- Mensaje de éxito -->
+        <div
+          id="success-message"
+          class="text-green-500 hidden text-sm text-center p-3 bg-green-50 border border-green-200 rounded-lg"
+        >
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+            Correo electrónico
+          </label>
+          <input
+            type="email"
+            id="email"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="tu@email.com"
+          />
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+            Contraseña
+          </label>
+          <input
+            type="password"
+            id="password"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="••••••••"
+          />
+        </div>
+
+        <!-- Submit button -->
+        <button
+          type="submit"
+          id="login-btn"
+          class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-400"
+        >
+          Iniciar sesión
+        </button>
+
+        <!-- Info -->
+        <div class="text-xs text-gray-500 text-center mt-4">
+          <p>🛡️ Sistema con autenticación dual: Firebase + Emergencia</p>
+          <p class="mt-1">Firebase Project: {firebaseConfig.projectId || 'No configurado'}</p>
+        </div>
+      </form>
+
+      <!-- Link al dashboard (temporal para testing) -->
+      <div class="mt-6 text-center">
+        <a 
+          href="/dashboard" 
+          class="text-gray-500 hover:text-gray-700 text-sm underline"
+        >
+          Ir directamente al Dashboard (testing)
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Inyectamos config Firebase como JSON en una variable global -->
+  {isConfigValid && (
+    <script 
+      type="application/json" 
+      id="firebase-config"
+      set:html={JSON.stringify(firebaseConfig)}
+    />
+  )}
+
+  <script>
+    // ===================================
+    // SISTEMA DE AUTENTICACIÓN DUAL
+    // ===================================
+    
+    // Credenciales de emergencia (siempre funcionan)
+    const EMERGENCY_CREDENTIALS = {
+      email: "admin@admin.com",
+      password: "admin1234"
+    };
+
+    // Elementos del DOM
+    const form = document.getElementById("loginForm");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const errorMessage = document.getElementById("error-message");
+    const successMessage = document.getElementById("success-message");
+    const loginBtn = document.getElementById("login-btn");
+    const configScript = document.getElementById("firebase-config");
+
+    // Funciones de utilidad
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.classList.remove("hidden");
+      successMessage.classList.add("hidden");
+    }
+
+    function showSuccess(message) {
+      successMessage.textContent = message;
+      successMessage.classList.remove("hidden");
+      errorMessage.classList.add("hidden");
+    }
+
+    function hideMessages() {
+      errorMessage.classList.add("hidden");
+      successMessage.classList.add("hidden");
+    }
+
+    function setLoginState(loading) {
+      loginBtn.disabled = loading;
+      loginBtn.textContent = loading ? "Iniciando sesión..." : "Iniciar sesión";
+    }
+
+    // Función para autenticación de emergencia
+    function emergencyAuth(email, password) {
+      return email === EMERGENCY_CREDENTIALS.email && password === EMERGENCY_CREDENTIALS.password;
+    }
+
+    // Función para guardar estado de login
+    function saveLoginState(method, userEmail = null) {
+      localStorage.setItem('adminLogin', JSON.stringify({
+        loggedIn: true,
+        timestamp: Date.now(),
+        method: method,
+        user: userEmail,
+        expires: Date.now() + (24 * 60 * 60 * 1000) // 24 horas
+      }));
+    }
+
+    // Función para redirigir al dashboard
+    function redirectToDashboard() {
+      showSuccess("¡Acceso concedido! Redirigiendo...");
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1000);
+    }
+
+    // Función principal de autenticación
+    async function handleLogin(email, password) {
+      setLoginState(true);
+      hideMessages();
+
+      console.log("🔑 Intentando autenticación...");
+
+      // 1. PRIMERA OPCIÓN: Credenciales de emergencia
+      if (emergencyAuth(email, password)) {
+        console.log("🚀 Emergency authentication successful");
+        saveLoginState('emergency');
+        redirectToDashboard();
+        return;
+      }
+
+      // 2. SEGUNDA OPCIÓN: Firebase (si está configurado)
+      if (configScript) {
+        try {
+          console.log("🔥 Intentando autenticación con Firebase...");
+          
+          const firebaseConfig = JSON.parse(configScript.textContent);
+          
+          // Importar Firebase dinámicamente
+          const { initializeApp } = await import("https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js");
+          const { getAuth, signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js");
+          
+          const app = initializeApp(firebaseConfig);
+          const auth = getAuth(app);
+          
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          
+          console.log("✅ Firebase authentication successful:", userCredential.user.email);
+          saveLoginState('firebase', userCredential.user.email);
+          redirectToDashboard();
+          return;
+          
+        } catch (firebaseError) {
+          console.warn("⚠️ Firebase authentication failed:", firebaseError.code);
+          
+          // Mensajes específicos para errores de Firebase
+          let errorMsg = "Error de autenticación";
+          if (firebaseError.code === "auth/user-not-found") {
+            errorMsg = "Usuario no encontrado en Firebase. ¿Has probado admin@admin.com?";
+          } else if (firebaseError.code === "auth/wrong-password") {
+            errorMsg = "Contraseña incorrecta en Firebase. ¿Has probado admin1234?";
+          } else if (firebaseError.code === "auth/invalid-email") {
+            errorMsg = "Email inválido. Prueba con admin@admin.com";
+          } else if (firebaseError.code === "auth/invalid-api-key") {
+            errorMsg = "Firebase no configurado correctamente. Usa admin@admin.com + admin1234";
+          } else if (firebaseError.code === "auth/too-many-requests") {
+            errorMsg = "Demasiados intentos. Usa credenciales de emergencia: admin@admin.com";
+          } else {
+            errorMsg = `Firebase: ${firebaseError.message}. Prueba con credenciales de emergencia.`;
+          }
+          
+          showError(errorMsg);
+          setLoginState(false);
+          return;
+        }
+      }
+
+      // 3. SI LLEGAMOS AQUÍ: Ni emergencia ni Firebase funcionaron
+      console.error("❌ Authentication failed for all methods");
+      showError("Credenciales incorrectas. Prueba con admin@admin.com y admin1234");
+      setLoginState(false);
+    }
+
+    // Event listener para el formulario
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        showError("Por favor, completa todos los campos");
+        return;
+      }
+
+      await handleLogin(email, password);
+    });
+
+    console.log("🔐 Login system ready");
+    console.log("🔥 Firebase config:", configScript ? "Available" : "Not available");
+  </script>
+</Layout>
