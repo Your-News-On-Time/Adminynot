@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 Accede a http://localhost:3000 para ver el panel en el navegador.
-También puedes acceder a la página real por: https://adminynot-ta4r-aqzgwvnce-nuhacet66s-projects.vercel.app/
+También puedes acceder a la página real por: https://adminynot.vercel.app/
 
 🌐 Despliegue
 
